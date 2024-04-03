@@ -9,6 +9,7 @@ import sys
 import grein_loader
 import pickle
 import requests
+from progressbar import progressbar
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -71,8 +72,11 @@ def load_datasets(geo_accessions: list, connection: sqlite3.Connection) -> None:
     :type connection: sqlite3.Connection
     """
     cur = connection.cursor()
+    
+    # create a nice progress bar
+    for i in progressbar(range(len(geo_accessions))):
+        accession = geo_accessions[i]
 
-    for accession in geo_accessions:
         # fetch the data from GREIN
         _LOGGER.debug(f"Loading dataset {accession} from GREIN")
 
@@ -106,8 +110,9 @@ def main(database, max_datasets):
     """Function to download / update the GREIN repository
     """
     # set up logging
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.DEBUG, filename="grein_proxy_update_database.log")
     logging.getLogger("urllib3").setLevel(level=logging.INFO)
+    logging.getLogger("gein_loader").setLevel(level=logging.INFO)
 
     # create a new database if it does not yet exist
     if not os.path.isfile(database):
@@ -118,21 +123,24 @@ def main(database, max_datasets):
 
     # get all already loaded datasets
     loaded_datasets = get_loaded_datasets(con)
-    _LOGGER.info(f"{len(loaded_datasets)} datasets available in database.")
+    print(f"{len(loaded_datasets)} datasets available in database.")
 
     # get all GREIN datasets
     # TODO: remove limit after debug
     grein_datasets = grein_loader.load_overview(no_datasets = max_datasets)
     grein_accessions = set([dataset["geo_accession"] for dataset in grein_datasets])
 
-    _LOGGER.info(f"{len(grein_datasets)} datasets available in GREIN.")
+    print(f"{len(grein_datasets)} datasets available in GREIN.")
 
     # define the datasets to load
     datasets_to_load = list(grein_accessions - loaded_datasets)
-    _LOGGER.info(f"{len(datasets_to_load)} new datasets to load")
+    print(f"{len(datasets_to_load)} new datasets to load")
 
     # load the new datasets
-    load_datasets(datasets_to_load, con)
+    if len(datasets_to_load) > 0:
+        load_datasets(datasets_to_load, con)
+    else:
+        print("Database up to date.")
 
     con.close()
 
