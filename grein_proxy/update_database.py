@@ -113,7 +113,7 @@ def load_datasets(geo_accessions: list, connection: sqlite3.Connection, retry_de
                 _LOGGER.error(f"Connection to GREIN failed - Retrying after {retry_delay} seconds...")
 
                 # repeat the request after a 30 sec delay
-                time.sleep(seconds = retry_delay)
+                time.sleep(retry_delay)
 
         # commit after each dataset
         connection.commit()
