@@ -5,7 +5,7 @@ import logging
 import click
 import sqlite3
 import os
-import sys
+import time
 import grein_loader
 import pickle
 import requests
@@ -63,13 +63,15 @@ def get_loaded_datasets(connection: sqlite3.Connection) -> set:
     return accession_numbers
 
 
-def load_datasets(geo_accessions: list, connection: sqlite3.Connection) -> None:
+def load_datasets(geo_accessions: list, connection: sqlite3.Connection, retry_delay: int) -> None:
     """Load the defined datasets from GREIN and store them in the database
 
     :param geo_accessions: The GEO accessions to load from GREIN
     :type geo_accessions: list
     :param connection: The connection to the sqlite database
     :type connection: sqlite3.Connection
+    :param retry_delay: Seconds to wait before a failed request is repeated.
+    :type retry_delay: int
     """
     cur = connection.cursor()
     
@@ -80,24 +82,38 @@ def load_datasets(geo_accessions: list, connection: sqlite3.Connection) -> None:
         # fetch the data from GREIN
         _LOGGER.debug(f"Loading dataset {accession} from GREIN")
 
-        try:
-            description, metadata, raw_counts = grein_loader.load_dataset(accession)
+        # put this in a second loop in order to be able to repeat requests - if the connection to
+        # GREIN fails
+        while True:
+            try:
+                description, metadata, raw_counts = grein_loader.load_dataset(accession)
 
-            # prepare the data for the database
-            binary_meta = pickle.dumps(metadata)
-            binary_raw_counts = pickle.dumps(raw_counts)
+                # prepare the data for the database
+                binary_meta = pickle.dumps(metadata)
+                binary_raw_counts = pickle.dumps(raw_counts)
 
-            data = [
-                accession, 1, description["Title"], description["Species"], binary_meta, binary_raw_counts
-            ]
+                data = [
+                    accession, 1, description["Title"], description["Species"], binary_meta, binary_raw_counts
+                ]
 
-            _LOGGER.debug(f"Saving {accession} into database")
-            cur.execute("INSERT INTO dataset(accession, status, title, species, metadata, raw_counts) VALUES(?, ?, ?, ?, ?, ?)", data)
-        except (requests.exceptions.HTTPError, grein_loader.exceptions.GreinLoaderException) as e:
-            _LOGGER.error("Failed to load dataset from GREIN", e)
+                _LOGGER.debug(f"Saving {accession} into database")
+                cur.execute("INSERT INTO dataset(accession, status, title, species, metadata, raw_counts) VALUES(?, ?, ?, ?, ?, ?)", data)
 
-            # mark the dataset as not available
-            cur.execute("INSERT INTO dataset(accession, status) VALUES(?, 0)", [accession])
+                # exit the fetching loop
+                break
+            except (requests.exceptions.HTTPError, grein_loader.exceptions.GreinLoaderException) as e:
+                _LOGGER.error("Failed to load dataset from GREIN", e)
+
+                # mark the dataset as not available
+                cur.execute("INSERT INTO dataset(accession, status) VALUES(?, 0)", [accession])
+
+                # exit the fecthing loop
+                break
+            except requests.exceptions.ConnectionError as e:
+                _LOGGER.error(f"Connection to GREIN failed - Retrying after {retry_delay} seconds...")
+
+                # repeat the request after a 30 sec delay
+                time.sleep(seconds = retry_delay)
 
         # commit after each dataset
         connection.commit()
@@ -106,7 +122,8 @@ def load_datasets(geo_accessions: list, connection: sqlite3.Connection) -> None:
 @click.command()
 @click.option("--database", "-d", required=True, type=str, help="Path to the sqlite file to use as a database.")
 @click.option("--max_datasets", "-m", required=False, type=int, help="The maximum number of datasets to load from GREIN.", default=1000000)
-def main(database, max_datasets):
+@click.option("--retry_delay", "-r", required=False, type=int, help="Seconds to wait before a request is repeated to GREIN if GREIN fails.", default = 30, show_default = True)
+def main(database, max_datasets, retry_delay):
     """Function to download / update the GREIN repository
     """
     # set up logging
@@ -138,7 +155,7 @@ def main(database, max_datasets):
 
     # load the new datasets
     if len(datasets_to_load) > 0:
-        load_datasets(datasets_to_load, con)
+        load_datasets(datasets_to_load, con, retry_delay)
     else:
         print("Database up to date.")
 
