@@ -129,7 +129,7 @@ def main(database, max_datasets, retry_delay):
     # set up logging
     logging.basicConfig(level=logging.DEBUG, filename="grein_proxy_update_database.log")
     logging.getLogger("urllib3").setLevel(level=logging.INFO)
-    logging.getLogger("gein_loader").setLevel(level=logging.INFO)
+    logging.getLogger("grein_loader").setLevel(level=logging.INFO)
 
     # create a new database if it does not yet exist
     if not os.path.isfile(database):
