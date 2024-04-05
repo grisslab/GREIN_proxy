@@ -10,9 +10,32 @@ import grein_loader
 import pickle
 import requests
 from progressbar import progressbar
+import concurrent.futures
 
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def load_grein_dataset_with_timeout(accession: str, timeout: int):
+    """Execute the respective function and return its result. If it does
+       not complete withing the defined timeout, an Exception is thrown.
+
+    :param The accession of the dataset to load
+    :param timeout: The timeout in seconds after which to kill the call
+    :type timeout: int
+    :return: The description, metadata, raw_counts of the dataset
+    """
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(grein_loader.load_dataset, accession)
+
+        try:
+            # Attempt to get the result within the specified timeout
+            description, metadata, raw_counts = future.result(timeout=timeout)
+            
+            return (description, metadata, raw_counts)
+        except concurrent.futures.TimeoutError as e:
+            _LOGGER.debug(f"Timeout of {timeout} seconds reached. Killing call")
+            raise e
 
 
 def create_database(database: str) -> None:
@@ -63,7 +86,7 @@ def get_loaded_datasets(connection: sqlite3.Connection) -> set:
     return accession_numbers
 
 
-def load_datasets(geo_accessions: list, connection: sqlite3.Connection, retry_delay: int) -> None:
+def load_datasets(geo_accessions: list, connection: sqlite3.Connection, retry_delay: int, timeout: int) -> None:
     """Load the defined datasets from GREIN and store them in the database
 
     :param geo_accessions: The GEO accessions to load from GREIN
@@ -72,6 +95,8 @@ def load_datasets(geo_accessions: list, connection: sqlite3.Connection, retry_de
     :type connection: sqlite3.Connection
     :param retry_delay: Seconds to wait before a failed request is repeated.
     :type retry_delay: int
+    :param timeout: Timeout in seconds after which a loading call to GREIN is killed.
+    :type timeout: int
     """
     cur = connection.cursor()
     
@@ -86,7 +111,7 @@ def load_datasets(geo_accessions: list, connection: sqlite3.Connection, retry_de
         # GREIN fails
         while True:
             try:
-                description, metadata, raw_counts = grein_loader.load_dataset(accession)
+                description, metadata, raw_counts = load_grein_dataset_with_timeout(accession=accession, timeout=timeout)
 
                 # prepare the data for the database
                 binary_meta = pickle.dumps(metadata)
@@ -123,7 +148,8 @@ def load_datasets(geo_accessions: list, connection: sqlite3.Connection, retry_de
 @click.option("--database", "-d", required=True, type=str, help="Path to the sqlite file to use as a database.")
 @click.option("--max_datasets", "-m", required=False, type=int, help="The maximum number of datasets to load from GREIN.", default=1000000)
 @click.option("--retry_delay", "-r", required=False, type=int, help="Seconds to wait before a request is repeated to GREIN if GREIN fails.", default = 30, show_default = True)
-def main(database, max_datasets, retry_delay):
+@click.option("--timeout", "-t", required=False, type=int, help="Timeout after which the GREIN loading function is killed.", default=60, show_default = True)
+def main(database, max_datasets, retry_delay, timeout):
     """Function to download / update the GREIN repository
     """
     # set up logging
@@ -155,7 +181,8 @@ def main(database, max_datasets, retry_delay):
 
     # load the new datasets
     if len(datasets_to_load) > 0:
-        load_datasets(datasets_to_load, con, retry_delay)
+        _LOGGER.info(f"Starting download of {datasets_to_load} datasets")
+        load_datasets(datasets_to_load, con, retry_delay, timeout)
     else:
         print("Database up to date.")
 
