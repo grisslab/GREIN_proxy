@@ -183,7 +183,7 @@ def main(database, max_datasets, retry_delay, timeout):
 
     # load the new datasets
     if len(datasets_to_load) > 0:
-        _LOGGER.info(f"Starting download of {datasets_to_load} datasets")
+        _LOGGER.info(f"Starting download of {len(datasets_to_load)} datasets")
         load_datasets(datasets_to_load, con, retry_delay, timeout)
     else:
         print("Database up to date.")
