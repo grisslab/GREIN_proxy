@@ -34,7 +34,7 @@ def load_grein_dataset_with_timeout(accession: str, timeout: int):
             
             return (description, metadata, raw_counts)
         except concurrent.futures.TimeoutError as e:
-            _LOGGER.debug(f"Timeout of {timeout} seconds reached. Killing call")
+            _LOGGER.error(f"Timeout of {timeout} seconds reached. Killing call")
             raise e
 
 
@@ -134,7 +134,7 @@ def load_datasets(geo_accessions: list, connection: sqlite3.Connection, retry_de
 
                 # exit the fecthing loop
                 break
-            except requests.exceptions.ConnectionError as e:
+            except (requests.exceptions.ConnectionError, concurrent.futures.TimeoutError) as e:
                 _LOGGER.error(f"Connection to GREIN failed - Retrying after {retry_delay} seconds...")
 
                 # repeat the request after a 30 sec delay
