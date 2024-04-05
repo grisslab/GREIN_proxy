@@ -30,7 +30,9 @@ def load_grein_dataset_with_timeout(accession: str, timeout: int):
 
         try:
             # Attempt to get the result within the specified timeout
+            _LOGGER.debug(f"Fetching dataset from GREIN within a maximum of {timeout} seconds")
             description, metadata, raw_counts = future.result(timeout=timeout)
+            _LOGGER.debug("Data received")
             
             return (description, metadata, raw_counts)
         except concurrent.futures.TimeoutError as e:
