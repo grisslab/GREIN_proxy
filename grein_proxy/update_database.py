@@ -129,7 +129,7 @@ def load_datasets(geo_accessions: list, connection: sqlite3.Connection, retry_de
                 # exit the fetching loop
                 break
             except (requests.exceptions.HTTPError, grein_loader.exceptions.GreinLoaderException) as e:
-                _LOGGER.error("Failed to load dataset from GREIN", str(e))
+                _LOGGER.error(f"Failed to load dataset from GREIN: {str(e)}")
 
                 # mark the dataset as not available
                 cur.execute("INSERT INTO dataset(accession, status) VALUES(?, 0)", [accession])
