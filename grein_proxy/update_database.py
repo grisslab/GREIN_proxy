@@ -16,6 +16,26 @@ import concurrent.futures
 _LOGGER = logging.getLogger(__name__)
 
 
+def print_logo():
+    """Print the applications logo to the
+       command line
+    """
+    print("""
+ _____ ______ _____ _____ _   _              ______                    
+|  __ \| ___ \  ___|_   _| \ | |             | ___ \                   
+| |  \/| |_/ / |__   | | |  \| |    ______   | |_/ / __ _____  ___   _ 
+| | __ |    /|  __|  | | | . ` |   |______|  |  __/ '__/ _ \ \/ / | | |
+| |_\ \| |\ \| |___ _| |_| |\  |             | |  | | | (_) >  <| |_| |
+ \____/\_| \_\____/ \___/\_| \_/             \_|  |_|  \___/_/\_\\__, |
+                                                                  __/ |
+                                                                 |___/ 
+
+                        +-------------------+
+                        |  DATABASE UPDATE  |
+                        +-------------------+
+          
+    """)
+
 def load_grein_dataset_with_timeout(accession: str, timeout: int):
     """Execute the respective function and return its result. If it does
        not complete withing the defined timeout, an Exception is thrown.
@@ -159,6 +179,9 @@ def main(database, max_datasets, retry_delay, timeout):
     logging.getLogger("urllib3").setLevel(level=logging.INFO)
     logging.getLogger("grein_loader").setLevel(level=logging.INFO)
 
+    # print the logo
+    print_logo()
+
     # create a new database if it does not yet exist
     if not os.path.isfile(database):
         create_database(database)
@@ -168,25 +191,26 @@ def main(database, max_datasets, retry_delay, timeout):
 
     # get all already loaded datasets
     loaded_datasets = get_loaded_datasets(con)
-    print(f"{len(loaded_datasets)} datasets available in database.")
+    print(f"Datasets in database: {len(loaded_datasets)}")
 
     # get all GREIN datasets
     # TODO: remove limit after debug
     grein_datasets = grein_loader.load_overview(no_datasets = max_datasets)
     grein_accessions = set([dataset["geo_accession"] for dataset in grein_datasets])
 
-    print(f"{len(grein_datasets)} datasets available in GREIN.")
-
+    print(f"Datasets in GREIN:    {len(grein_datasets)}")
+ 
     # define the datasets to load
     datasets_to_load = list(grein_accessions - loaded_datasets)
-    print(f"{len(datasets_to_load)} new datasets to load")
+    print(f"Datasets to load:     {len(datasets_to_load)}")
 
     # load the new datasets
     if len(datasets_to_load) > 0:
-        _LOGGER.info(f"Starting download of {len(datasets_to_load)} datasets")
+        _LOGGER.info(f"Starting download of {len(datasets_to_load):30} datasets")
+        print("\n       >>>>>   Starting update   <<<<\n\n")
         load_datasets(datasets_to_load, con, retry_delay, timeout)
     else:
-        print("Database up to date.")
+        print("\n       >>>>>   Database up to date.   <<<<\n\n")
 
     con.close()
 
