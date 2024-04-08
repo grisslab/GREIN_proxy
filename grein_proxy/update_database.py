@@ -13,6 +13,8 @@ import urllib3
 from progressbar import progressbar
 import concurrent.futures
 
+from . import logo
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -21,16 +23,9 @@ def print_logo():
     """Print the applications logo to the
        command line
     """
+    logo.print_logo()
+    
     print("""
- _____ ______ _____ _____ _   _              ______                    
-|  __ \| ___ \  ___|_   _| \ | |             | ___ \                   
-| |  \/| |_/ / |__   | | |  \| |    ______   | |_/ / __ _____  ___   _ 
-| | __ |    /|  __|  | | | . ` |   |______|  |  __/ '__/ _ \ \/ / | | |
-| |_\ \| |\ \| |___ _| |_| |\  |             | |  | | | (_) >  <| |_| |
- \____/\_| \_\____/ \___/\_| \_/             \_|  |_|  \___/_/\_\\__, |
-                                                                  __/ |
-                                                                 |___/ 
-
                         +-------------------+
                         |  DATABASE UPDATE  |
                         +-------------------+

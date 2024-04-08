@@ -28,3 +28,4 @@ files = ["requirements.txt"]
 
 [project.scripts]
 update_database = "grein_proxy.update_database:main"
+grein_proxy = "grein_proxy.proxy:main"
