@@ -9,6 +9,7 @@ import time
 import grein_loader
 import pickle
 import requests
+import urllib3
 from progressbar import progressbar
 import concurrent.futures
 
@@ -162,6 +163,10 @@ def load_datasets(geo_accessions: list, connection: sqlite3.Connection, retry_de
                 # repeat the request after a 30 sec delay
                 time.sleep(retry_delay)
 
+                # try to reset the urllib3 pool manager - although it is unclear whether
+                # this has an effect
+                urllib3.PoolManager().clear()
+
         # commit after each dataset
         connection.commit()
 
@@ -206,11 +211,11 @@ def main(database, max_datasets, retry_delay, timeout):
 
     # load the new datasets
     if len(datasets_to_load) > 0:
-        _LOGGER.info(f"Starting download of {len(datasets_to_load):30} datasets")
-        print("\n       >>>>>   Starting update   <<<<\n\n")
+        _LOGGER.info(f"Starting download of {len(datasets_to_load)} datasets")
+        print("\n       >>>>>   Starting update   <<<<<\n\n")
         load_datasets(datasets_to_load, con, retry_delay, timeout)
     else:
-        print("\n       >>>>>   Database up to date.   <<<<\n\n")
+        print("\n       >>>>>   Database up to date.   <<<<<\n\n")
 
     con.close()
 
