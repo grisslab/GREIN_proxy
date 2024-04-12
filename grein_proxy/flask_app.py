@@ -117,7 +117,7 @@ def create_app(test_config=None):
             abort(500, f"Duplicate entries for {accession}")
         
         if entries[0]["status"] != 1:
-            abort(500, "Database not available in GREIN")
+            abort(404, "Database not available in GREIN")
 
         metadata = entries[0]["metadata"]
 
@@ -144,7 +144,7 @@ def create_app(test_config=None):
             abort(500, f"Duplicate entries for {accession}")
 
         if entries[0]["status"] != 1:
-            abort(500, "Database not available in GREIN")
+            abort(404, "Database not available in GREIN")
 
         raw_counts = pickle.loads(entries[0]["raw_counts"])
 
