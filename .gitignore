@@ -161,3 +161,6 @@ cython_debug/
 GKE.md
 
 .vscode
+
+docker/*.whl
+docker/*.db
