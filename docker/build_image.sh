@@ -20,6 +20,7 @@ read IMAGE_TAG
 # build the python image
 cd ..
 rm -rf dist
+rm docker/*.whl
 python3 -m build
 
 check_error $? "Failed to build python package"

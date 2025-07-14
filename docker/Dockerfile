@@ -1,4 +1,4 @@
-FROM docker.io/python:3.10-alpine3.19
+FROM docker.io/python:3.13.5-alpine3.22
 
 # set the location of the database
 ENV GREIN_DB "/data/grein.db"

@@ -1,4 +1,4 @@
-grein_loader>=0.0.5
+grein_loader>=0.0.6
 click
 requests
 progressbar2
